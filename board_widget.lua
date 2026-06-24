@@ -15,6 +15,25 @@ local C_DOT      = Blitbuffer.COLOR_GRAY_9  -- valid move dot on dark sq
 local C_LINE     = Blitbuffer.COLOR_BLACK
 
 -- ---------------------------------------------------------------------------
+-- Piece image loading (Wikipedia SVG-derived 128px grayscale PNGs)
+-- ---------------------------------------------------------------------------
+
+local _src_dir = (debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") or "./")
+local _img_dir = _src_dir .. "pieces_img/"
+local _img_cache = {}  -- key "name:size" → blitbuffer or false
+
+local function getPieceImage(name, size)
+    local key = name .. ":" .. size
+    local cached = _img_cache[key]
+    if cached ~= nil then return cached or nil end
+    local ok, RenderImage = pcall(require, "ui/renderimage")
+    if not ok then _img_cache[key] = false; return nil end
+    local img = RenderImage:renderImageFile(_img_dir .. name .. ".png", false, size, size)
+    _img_cache[key] = img or false
+    return img
+end
+
+-- ---------------------------------------------------------------------------
 -- CheckersBoardWidget
 -- ---------------------------------------------------------------------------
 
@@ -93,7 +112,8 @@ function CheckersBoardWidget:paintTo(bb, x, y)
     local B_MAN  = board.B_MAN
     local B_KING = board.B_KING
 
-    local face = self.number_face
+    local face     = self.number_face
+    local img_size = math.min(pw, ph)
 
     -- Draw pieces
     for r = 1, n do
@@ -103,23 +123,25 @@ function CheckersBoardWidget:paintTo(bb, x, y)
                 local cx = x + math.floor((c - 1) * cw)
                 local cy = y + math.floor((r - 1) * ch)
 
-                local fill, border, letter_color, letter
+                local img_name, fill, border, letter_color, letter
                 if v == W_MAN then
+                    img_name     = "wman"
                     fill         = Blitbuffer.COLOR_WHITE
                     border       = Blitbuffer.COLOR_BLACK
                     letter_color = Blitbuffer.COLOR_BLACK
-                    letter       = nil
                 elseif v == W_KING then
+                    img_name     = "wking"
                     fill         = Blitbuffer.COLOR_WHITE
                     border       = Blitbuffer.COLOR_BLACK
                     letter_color = Blitbuffer.COLOR_BLACK
                     letter       = "D"
                 elseif v == B_MAN then
+                    img_name     = "bman"
                     fill         = Blitbuffer.COLOR_BLACK
                     border       = Blitbuffer.COLOR_GRAY_4
                     letter_color = Blitbuffer.COLOR_WHITE
-                    letter       = nil
                 elseif v == B_KING then
+                    img_name     = "bking"
                     fill         = Blitbuffer.COLOR_BLACK
                     border       = Blitbuffer.COLOR_GRAY_4
                     letter_color = Blitbuffer.COLOR_WHITE
@@ -127,17 +149,26 @@ function CheckersBoardWidget:paintTo(bb, x, y)
                 end
 
                 if fill then
-                    bb:paintRect(cx + pad, cy + pad, pw, ph, fill)
-                    bb:paintRect(cx + pad,           cy + pad,           pw, bw, border)
-                    bb:paintRect(cx + pad,           cy + pad + ph - bw, pw, bw, border)
-                    bb:paintRect(cx + pad,           cy + pad,           bw, ph, border)
-                    bb:paintRect(cx + pad + pw - bw, cy + pad,           bw, ph, border)
-
-                    if letter and face then
-                        local m  = RenderText:sizeUtf8Text(0, pw - 2, face, letter, true, false)
-                        local tx = cx + math.floor((cew - m.x) / 2)
-                        local ty = cy + math.floor((ceh - (m.y_bottom - m.y_top)) / 2) - m.y_top
-                        RenderText:renderUtf8Text(bb, tx, ty, face, letter, true, false, letter_color)
+                    local img = img_name and getPieceImage(img_name, img_size)
+                    if img then
+                        local iw = img:getWidth()
+                        local ih = img:getHeight()
+                        local ox = cx + math.floor((cew - iw) / 2)
+                        local oy = cy + math.floor((ceh - ih) / 2)
+                        bb:blitFrom(img, ox, oy, 0, 0, iw, ih)
+                    else
+                        -- Fallback: rectangle with border (and letter for kings)
+                        bb:paintRect(cx + pad, cy + pad, pw, ph, fill)
+                        bb:paintRect(cx + pad,           cy + pad,           pw, bw, border)
+                        bb:paintRect(cx + pad,           cy + pad + ph - bw, pw, bw, border)
+                        bb:paintRect(cx + pad,           cy + pad,           bw, ph, border)
+                        bb:paintRect(cx + pad + pw - bw, cy + pad,           bw, ph, border)
+                        if letter and face then
+                            local m  = RenderText:sizeUtf8Text(0, pw - 2, face, letter, true, false)
+                            local tx = cx + math.floor((cew - m.x) / 2)
+                            local ty = cy + math.floor((ceh - (m.y_bottom - m.y_top)) / 2) - m.y_top
+                            RenderText:renderUtf8Text(bb, tx, ty, face, letter, true, false, letter_color)
+                        end
                     end
                 end
             end
