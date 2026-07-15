@@ -120,25 +120,16 @@ function DamesScreen:buildLayout()
         button_width = math.floor(sw * 0.92)
     end
 
-    -- Top button row: New | Players | Difficulty | Rules | Close
-    local top_buttons = ButtonTable:new{
-        width                 = button_width,
-        shrink_unneeded_width = true,
-        buttons = {{
-            { text = _("Nouveau"),    callback = function() self:onNewGame()          end },
-            { text = self:getPlayersButtonText(),
-                                      callback = function() self:openPlayersMenu()    end,
-                                      id = "players_btn" },
-            { text = self:getDiffButtonText(),
-                                      callback = function() self:openDifficultyMenu() end,
-                                      id = "diff_btn" },
-            { text = self:getStyleButtonText(),
-                                      callback = function() self:openStyleMenu()      end,
-                                      id = "style_btn" },
+    -- Title bar with Options menu
+    local title_bar = self:buildTitleBar(_("Dames"), function()
+        return {
+            { text = _("Nouveau"),                 callback = function() self:onNewGame() end },
+            { text = self:getPlayersButtonText(),  callback = function() self:openPlayersMenu() end },
+            { text = self:getDiffButtonText(),     callback = function() self:openDifficultyMenu() end },
+            { text = self:getStyleButtonText(),    callback = function() self:openStyleMenu() end },
             self:makeRulesButtonConfig(GAME_RULES_EN, GAME_RULES_FR),
-            self:makeCloseButtonConfig(),
-        }},
-    }
+        }
+    end)
 
     -- Bottom button row: Undo
     local bottom_buttons = ButtonTable:new{
@@ -149,24 +140,20 @@ function DamesScreen:buildLayout()
         }},
     }
 
-    self.top_buttons    = top_buttons
-    self.bottom_buttons = bottom_buttons
-
     if is_landscape then
         local right_panel = VerticalGroup:new{
             align = "center",
-            top_buttons,
-            VerticalSpan:new{ width = Size.span.vertical_large },
             self.status_text,
             VerticalSpan:new{ width = Size.span.vertical_large },
             bottom_buttons,
         }
-        self.layout = HorizontalGroup:new{
+        local content = HorizontalGroup:new{
             align = "center",
             board_frame,
             HorizontalSpan:new{ width = Size.span.horizontal_default },
             right_panel,
         }
+        self:buildLandscapeLayout(title_bar, content)
     else
         local content = VerticalGroup:new{
             align = "center",
@@ -174,10 +161,8 @@ function DamesScreen:buildLayout()
             VerticalSpan:new{ width = Size.span.vertical_large },
             self.status_text,
         }
-        self:buildPortraitLayout(top_buttons, content, bottom_buttons)
+        self:buildPortraitLayout(title_bar, content, bottom_buttons)
     end
-
-    self[1] = self.layout
     self:updateStatus()
 end
 
