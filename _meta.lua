@@ -1,6 +1,6 @@
 return {
     name        = "dames",
-    version     = "1.1.1",
+    version     = "1.1.2",
     fullname    = "Dames",
     description = "Jeu de dames 8x8",
 }
